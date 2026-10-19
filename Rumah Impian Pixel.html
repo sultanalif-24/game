@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rumah Impian Pixel</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#1b1f3a;color:#fff;font-family:system-ui,sans-serif}
+.px{font-family:'Press Start 2P',monospace}
+canvas{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:linear-gradient(#2b3a7a,#6fb6ff);text-align:center;padding:20px;z-index:10}
+.scr h1{font-size:clamp(20px,5vw,40px);color:#ffe066;text-shadow:4px 4px #b5471b;margin:0;line-height:1.4}
+.cr{font-size:12px;max-width:520px;line-height:1.6}
+button,input{font:inherit}
+.btn{background:#ffcf33;color:#3a2200;border:0;border-bottom:4px solid #b88400;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:700}
+.btn:active{transform:translateY(2px)}.btn.g{background:#5fd35f;border-color:#2f8f2f;color:#073}.btn.r{background:#ff7a7a;border-color:#b33;color:#400}
+input{padding:10px;border-radius:6px;border:2px solid #ffcf33;width:220px;text-align:center}
+#bar{height:18px;width:min(320px,80vw);background:#0006;border:3px solid #fff;border-radius:4px}#bar i{display:block;height:100%;width:0;background:#5fd35f}
+#hud{position:fixed;left:0;right:0;top:0;padding:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#0008;z-index:5;font-size:14px}
+#prog{flex:1;min-width:140px;height:16px;background:#0006;border-radius:8px;overflow:hidden;border:2px solid #fff6}#prog i{display:block;height:100%;width:0;background:#5fd35f;transition:width .4s}
+#panel{position:fixed;left:0;right:0;bottom:0;max-height:42vh;background:#141830ee;z-index:5;display:flex;flex-direction:column}
+#tabs{display:flex;gap:4px;padding:6px;overflow:auto}#tabs .btn{padding:6px 10px;font-size:13px;white-space:nowrap}
+#body{overflow:auto;padding:8px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+.card{background:#2a3060;border-radius:8px;padding:8px;width:150px;font-size:12px;display:flex;flex-direction:column;gap:4px}
+.sw{width:30px;height:30px;border-radius:6px;border:2px solid #fff;cursor:pointer;display:inline-block;margin:2px}
+.row{width:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#say{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(42vh + 8px);width:min(520px,94vw);background:#fffdf0;color:#222;border:4px solid #333;border-radius:10px;padding:10px;z-index:6;font-size:14px;display:none}
+#hint{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:#000a;padding:6px 12px;border-radius:6px;z-index:6;font-size:13px;display:none}
+.opt{display:block;width:100%;margin:4px 0;text-align:left}
+</style></head><body>
+<canvas id="c"></canvas>
+<div class="scr" id="title"><h1 class="px">RUMAH IMPIAN<br>PIXEL</h1>
+<div class="cr px" style="font-size:10px">credit by Sultan Alif IX-A SMP Al-Hikmah IIBS Batu, helped by Claude AI</div>
+<div id="nm" style="display:none"><input id="ni" maxlength="14" placeholder="Pilih namamu"> <button class="btn g" id="ok">OK</button></div>
+<div id="hi"></div>
+<button class="btn" id="chg">Ganti / Pilih Nama</button><button class="btn g" id="play">PLAY</button></div>
+<div class="scr" id="load" style="display:none"><h1 class="px" style="font-size:20px">Loading...</h1><div id="bar"><i></i></div><div class="cr" id="tip"></div></div>
+<div id="hud" style="display:none"><b id="who"></b><span id="coin"></span><span id="lv"></span><div id="prog"><i></i></div>
+<button class="btn" id="vOut">Luar</button><button class="btn" id="vIn">Masuk</button></div>
+<div id="hint"></div><div id="say"><div id="sayt"></div><button class="btn g" id="sayb" style="margin-top:6px">Lanjut</button></div>
+<div id="panel" style="display:none"><div id="tabs"></div><div id="body"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let S={name:'Pemain',coins:60,gen:0,level:1,items:[],wall:0xf2e6c9,floor:0,win:0,roof:0xb5471b};
+try{Object.assign(S,JSON.parse(localStorage.getItem('rumahpx')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('rumahpx',JSON.stringify({...S,items:S.items.map(({i,x,z,r})=>({i,x,z,r}))}))}catch(e){}};
+const COL=[['Putih',0xf5f5f5],['Hitam',0x2b2b2b],['Merah',0xd9453b],['Biru',0x3b6fd9],['Hijau',0x3fa84f],['Kuning',0xe8c43a],['Ungu',0x8a4fd0],['Pink',0xf08cb4],['Cokelat',0x8a5a32],['Abu',0x9a9a9a],['Oranye',0xee8a2b],['Tosca',0x30b8b0]];
+const TIER=['Biasa','Bagus','Cantik','Mewah','Premium','Sultan'],TM=[1,2,4,8,15,30],TP=[1,2,4,7,11,16],STY=['Minimalis','Klasik','Modern'];
+const BASE=[['Kursi','Duduk',15],['Sofa','Duduk',45],['Meja','Meja',25],['TV','Elektronik',60],['Lampu Hias','Lampu',12],['Kasur','Kamar',70],['Lemari','Simpan',40],['Rak Buku','Simpan',22],['Tanaman','Dekor',10],['Karpet','Dekor',18],['Lukisan','Dekor',14],['Kulkas','Elektronik',80],['Pintu Dekor','Pintu',30],['Jendela Dekor','Pintu',28],['Jam Dinding','Dekor',12]];
+const CATS=['Semua','Duduk','Meja','Elektronik','Lampu','Kamar','Simpan','Dekor','Pintu'];
+const N=BASE.length*216;
+function item(i){const c=i%12,s=Math.floor(i/12)%3,t=Math.floor(i/36)%6,b=Math.floor(i/216);const B=BASE[b];
+ return{i,b,c,s,t,cat:B[1],name:`${B[0]} ${TIER[t]} ${STY[s]} ${COL[c][0]}`,price:Math.round(B[2]*TM[t]*(1+s*.1)),pts:TP[t]}}
+/* ===== 3D ===== */
+const cv=$('#c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:false});
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x8fd0ff);
+const cam=new THREE.PerspectiveCamera(50,1,.1,200);
+function rs(){R.setSize(innerWidth*.45,innerHeight*.45,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
+addEventListener('resize',rs);rs();
+sc.add(new THREE.HemisphereLight(0xffffff,0x6a7a5a,.85));
+const dl=new THREE.DirectionalLight(0xffffff,.6);dl.position.set(6,12,8);sc.add(dl);
+const LM=(c,e)=>{const m=new THREE.MeshLambertMaterial({color:c,flatShading:true});if(e)m.emissive=new THREE.Color(e);return m};
+function bx(g,w,h,d,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y+h/2,z);g.add(m);return m}
+function tex(k){const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');
+ const P=[['#b98a54','#a67a46'],['#e8e8ee','#cfd2da'],['#b04040','#963232'],['#8d8d93','#76767c']][k];
+ x.fillStyle=P[0];x.fillRect(0,0,16,16);x.fillStyle=P[1];
+ for(let i=0;i<16;i+=k==0?4:8){x.fillRect(0,i,16,1);x.fillRect(i,0,1,16)}
+ const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,5);return t}
+const W=10,D=8,H=3;
+const gr=new THREE.Mesh(new THREE.PlaneGeometry(80,80),LM(0x4fae4f));gr.rotation.x=-Math.PI/2;gr.position.y=-.02;sc.add(gr);
+const path=new THREE.Mesh(new THREE.PlaneGeometry(2,8),LM(0xc9b48a));path.rotation.x=-Math.PI/2;path.position.set(0,0,8);sc.add(path);
+const floorM=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshLambertMaterial({map:tex(S.floor)}));floorM.rotation.x=-Math.PI/2;sc.add(floorM);
+const wallMat=LM(S.wall),roofMat=LM(S.roof);
+const house=new THREE.Group(),front=new THREE.Group(),roof=new THREE.Group();sc.add(house);house.add(front,roof);
+bx(house,W,H,.3,0,0,-D/2,wallMat);bx(house,.3,H,D,-W/2,0,0,wallMat);bx(house,.3,H,D,W/2,0,0,wallMat);
+bx(front,3.5,H,.3,-3.25,0,D/2,wallMat);bx(front,3.5,H,.3,3.25,0,D/2,wallMat);bx(front,3,.8,.3,0,2.2,D/2,wallMat);
+bx(front,.15,2.2,.15,-1.5,0,D/2+.1,LM(0x5a3a1c));bx(front,.15,2.2,.15,1.5,0,D/2+.1,LM(0x5a3a1c));
+const curtM=LM(0x66aaff),frM=LM(0xffffff);
+function win(g,x,z,ry){const w=new THREE.Group();bx(w,1.6,1.2,.1,0,0,0,LM(0x9fdcff,0x223344));bx(w,1.8,.12,.14,0,-.06,0,frM);bx(w,1.8,.12,.14,0,1.14,0,frM);bx(w,.12,1.3,.14,0,-.06,0,frM);bx(w,.45,1.2,.16,-.55,0,0,curtM);bx(w,.45,1.2,.16,.55,0,0,curtM);w.position.set(x,1.1,z);w.rotation.y=ry;g.add(w)}
+win(front,-3.3,D/2+.18,0);win(front,3.3,D/2+.18,0);win(house,-2,-D/2+.18,0);win(house,2,-D/2+.18,0);
+const rf=new THREE.Mesh(new THREE.ConeGeometry(8.2,2.6,4),roofMat);rf.rotation.y=Math.PI/4;rf.position.y=H+1.3;rf.scale.z=.8;roof.add(rf);
+[[-8,3],[8,2],[-9,-4],[9,-5],[-6,10]].forEach(p=>{const t=new THREE.Group();bx(t,.4,1.2,.4,0,0,0,LM(0x6b4423));bx(t,1.6,1.6,1.6,0,1.2,0,LM(0x2f8f3f));t.position.set(p[0],0,p[1]);sc.add(t)});
+/* robot */
+const robot=new THREE.Group();bx(robot,.7,.8,.5,0,.3,0,LM(0xdddddd));bx(robot,.6,.5,.5,0,1.1,0,LM(0xeeeeee));bx(robot,.15,.15,.05,-.15,1.3,.26,LM(0x00ccff,0x0088cc));bx(robot,.15,.15,.05,.15,1.3,.26,LM(0x00ccff,0x0088cc));bx(robot,.05,.3,.05,0,1.6,0,LM(0xff5555));robot.position.set(2.8,0,6);robot.rotation.y=-.5;sc.add(robot);
+/* items */
+function mk(bi,ci,t,st){const g=new THREE.Group(),col=COL[ci][1],k=[1,1.1,.92][st];
+ const tc=[0x555555,0x888888,0xbbbbbb,0xffd34d,0xffd34d,0xffe680][t],ge=t>=5?0x664400:0;
+ const M=LM(col),T=LM(tc,ge),b=(w,h,d,x,y,z,m)=>bx(g,w,h,d,x,y,z,m||M);
+ const legs=(w,d,h,m)=>[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(p=>b(.08,h,.08,p[0]*w,0,p[1]*d,m||T));
+ switch(bi){
+ case 0:b(.7,.12,.7,0,.45,0);b(.7,.7,.12,0,.55,-.29);legs(.28,.28,.45);break;
+ case 1:b(2,.45,.9,0,.1,0);b(2,.6,.25,0,.5,-.32);b(.25,.35,.9,-.95,.5,0);b(.25,.35,.9,.95,.5,0);b(.15,.1,.15,-.85,0,.35,T);b(.15,.1,.15,.85,0,.35,T);break;
+ case 2:b(1.5,.1,.9,0,.7,0);legs(.65,.35,.7);break;
+ case 3:b(1.3,.75,.1,0,.55,0,LM(0x111111));b(1.15,.6,.05,0,.62,.07,LM(0x1b3a5c,t>=3?0x0f4a7a:0x0a2a4a));b(.5,.06,.3,0,.5,0,T);b(.12,.12,.1,0,.45,0,T);break;
+ case 4:b(.35,.06,.35,0,0,0,T);b(.06,1.1,.06,0,0,0,T);b(.5,.4,.5,0,1.1,0,LM(0xffee99,0xffcc44));break;
+ case 5:b(1.8,.35,2.2,0,.1,0,LM(0x7a5230));b(1.7,.2,2,0,.45,0);b(1.6,.15,.5,0,.65,-.7,LM(0xffffff));b(1.8,.9,.12,0,.1,-1.1,T);break;
+ case 6:b(1.3,2,.6,0,0,0);b(.05,1.8,.05,0,.1,.32,T);b(.05,.2,.05,-.15,.9,.34,T);b(.05,.2,.05,.15,.9,.34,T);break;
+ case 7:b(1.4,1.6,.4,0,0,0,LM(0x7a5230));[.3,.75,1.2].forEach((y,i)=>{b(1.3,.06,.38,0,y,.02,T);b(.2,.3,.3,-.4+i*.3,y+.06,0)});break;
+ case 8:b(.4,.35,.4,0,0,0,LM(0xb5651d));b(.7,.7,.7,0,.35,0,LM(0x2f9f4f));b(.4,.5,.4,0,.9,0,LM(t>=3?0xff77aa:0x3fbf5f));break;
+ case 9:b(2.2,.04,1.5,0,0,0);b(1.8,.05,1.1,0,0,0,T);break;
+ case 10:b(1.2,.9,.08,0,1.2,0,T);b(1.05,.75,.1,0,1.27,0,M);b(.5,.35,.12,.1,1.35,0,LM(0xffffff));break;
+ case 11:b(.9,1.9,.8,0,0,0,M);b(.05,.6,.05,.35,1,.42,T);b(.9,.03,.82,0,1.15,0,T);break;
+ case 12:b(1.2,2.3,.1,0,0,0,M);b(1.3,.1,.14,0,2.3,0,T);b(.1,.1,.06,.4,1.1,.08,T);break;
+ case 13:b(1.4,1.2,.08,0,.9,0,LM(0x9fdcff,0x223344));b(1.5,.1,.12,0,.85,0,T);b(1.5,.1,.12,0,2.05,0,T);b(.1,1.3,.12,0,.85,0,T);break;
+ case 14:b(.7,.7,.1,0,1.8,0,T);b(.55,.55,.12,0,1.88,0,LM(0xffffff));b(.04,.22,.13,0,2.15,0,LM(0x222222));break;}
+ g.scale.setScalar(k);return g}
+const objs=[];
+function spawn(it,x,z,r){const o=mk(it.b,it.c,it.t,it.s);o.position.set(x,0,z);o.rotation.y=r;sc.add(o);return o}
+S.items=S.items.map(e=>({...e,o:spawn(item(e.i),e.x,e.z,e.r)}));
+/* camera */
+let th=0,ph=.35,rd=18,tth=0,tph=.35,trd=18,inside=false;
+function view(i){inside=i;front.visible=roof.visible=!i;if(i){tth=0;tph=1;trd=13}else{tth=0;tph=.35;trd=18}}
+let drag=false,mv=0,lx=0,ly=0,pend=null,sel=null;
+cv.addEventListener('pointerdown',e=>{drag=true;mv=0;lx=e.clientX;ly=e.clientY});
+addEventListener('pointerup',e=>{if(drag&&mv<6&&e.target===cv)click(e);drag=false});
+cv.addEventListener('pointermove',e=>{if(drag){const dx=e.clientX-lx,dy=e.clientY-ly;mv+=Math.abs(dx)+Math.abs(dy);tth-=dx*.006;tph=Math.max(.15,Math.min(1.4,tph+dy*.005));lx=e.clientX;ly=e.clientY}if(pend){const p=hit(e,[floorM]);if(p)place(pend.o,p.point)}});
+cv.addEventListener('wheel',e=>{trd=Math.max(7,Math.min(28,trd+e.deltaY*.01))});
+const ray=new THREE.Raycaster(),mp=new THREE.Vector2();
+function hit(e,list){mp.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(mp,cam);return ray.intersectObjects(list,true)[0]}
+function place(o,p){const m=.6;o.position.set(Math.round(Math.max(-W/2+m,Math.min(W/2-m,p.x))*2)/2,0,Math.round(Math.max(-D/2+m,Math.min(D/2-m,p.z))*2)/2)}
+function click(e){
+ if(pend){const p=hit(e,[floorM]);if(!p)return;place(pend.o,p.point);const it=pend.it;
+  if(S.coins<it.price){say('Koinmu kurang! Kerjakan soal dulu ya.');return}
+  S.coins-=it.price;S.items.push({i:it.i,x:pend.o.position.x,z:pend.o.position.z,r:pend.o.rotation.y,o:pend.o});pend=null;hint('');upd();save();tab('shop');return}
+ const h=hit(e,S.items.map(a=>a.o));selOf(h?S.items.find(a=>{let o=h.object;while(o){if(o===a.o)return true;o=o.parent}return false}):null)}
+function selOf(a){sel=a;hint(a?'Dipilih: '+item(a.i).name:'');if(a)tab('sel')}
+function hint(t){const h=$('#hint');h.style.display=t?'block':'none';h.innerHTML=t}
+/* quiz */
+const BANK={PAI:[['Rukun Islam ada berapa?','5','4','6','7'],['Kitab suci umat Islam?','Al-Quran','Injil','Taurat','Zabur'],['Salat wajib sehari ada?','5 kali','3 kali','4 kali','6 kali'],['Bulan puasa Ramadan?','Ramadan','Syawal','Rajab','Muharram'],['Nabi terakhir?','Muhammad SAW','Isa AS','Musa AS','Ibrahim AS'],['Jumlah rukun iman?','6','5','7','4']],
+IPS:[['Ibu kota Indonesia (kini)?','Jakarta','Bandung','Surabaya','Medan'],['Proklamasi dibacakan tahun?','1945','1944','1950','1928'],['Benua tempat Indonesia?','Asia','Afrika','Eropa','Amerika'],['Pulau terbesar Indonesia?','Kalimantan','Jawa','Bali','Madura'],['Presiden pertama RI?','Soekarno','Soeharto','Habibie','Hatta'],['Mata uang Indonesia?','Rupiah','Ringgit','Dolar','Baht']],
+ENG:[['Arti "apple"?','Apel','Jeruk','Pisang','Mangga'],['"I ___ a student." (am/is/are)','am','is','are','be'],['Lawan kata "big"?','small','tall','long','wide'],['Arti "chair"?','Kursi','Meja','Pintu','Lampu'],['Warna "red"?','Merah','Biru','Hijau','Kuning'],['Plural dari "child"?','children','childs','childes','childrens']]};
+function qMat(){const L=S.level,m=3+L*3,a=1+Math.floor(Math.random()*m*2),b=1+Math.floor(Math.random()*m),o=Math.random()*3|0;
+ let q,r;if(o==0){q=`${a} + ${b}`;r=a+b}else if(o==1){q=`${a+b} - ${b}`;r=a;}else{const x=2+Math.floor(Math.random()*(4+L)),y=2+Math.floor(Math.random()*(4+L));q=`${x} x ${y}`;r=x*y}
+ const w=new Set();while(w.size<3){const d=r+Math.floor(Math.random()*9)-4;if(d!==r&&d>=0)w.add(d)}return['Berapa '+q+' ?',String(r),...[...w].map(String)]}
+const mult=()=>[1,1.5,2,3,5,8][S.gen],GEN=[['Tanpa Generator',0],['Generator Mini x1.5',100],['Generator Kota x2',350],['Generator Turbo x3',1200],['Generator Super x5',5000],['Generator Raksasa x8',20000]];
+function quiz(sub){const q=sub=='MTK'?qMat():BANK[sub][Math.random()*6|0],ops=q.slice(1).map((t,i)=>({t,ok:i==0})).sort(()=>Math.random()-.5),rew=Math.round((10+S.level*2)*mult());
+ $('#body').innerHTML=`<div style="width:100%"><b>${sub}</b> - hadiah +${rew} koin (x${mult()})<br><br>${q[0]}${ops.map((o,i)=>`<button class="btn opt" data-i="${i}">${o.t}</button>`).join('')}</div>`;
+ document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const o=ops[b.dataset.i];if(o.ok){S.coins+=rew;upd();save();$('#body').innerHTML=`<div>Benar! +${rew} koin <button class="btn g" id="nx">Soal lagi</button></div>`}else $('#body').innerHTML=`<div>Belum tepat, coba lagi. <button class="btn g" id="nx">Soal lagi</button></div>`;$('#nx').onclick=()=>quiz(sub)})}
+/* levels */
+const LV=[['Kamar Pertama',3,5,0],['Ruang Santai',5,14,50],['Rumah Nyaman',8,30,100],['Rumah Cantik',11,55,200],['Rumah Hits',15,90,400],['Rumah Mewah',19,140,700],['Rumah Elegan',24,200,1200],['Rumah Sultan',29,280,2000],['Istana Mini',35,380,3500],['Rumah Impian',40,500,6000]];
+const score=()=>S.items.reduce((s,a)=>s+item(a.i).pts,0);
+function prog(){const L=LV[Math.min(S.level,10)-1],p=Math.min(1,S.items.length/L[1],score()/L[2]);return{L,p}}
+/* UI */
+let page=0,fc='Semua',ft=-1;
+const TABS=[['shop','Toko'],['dec','Dekor'],['quiz','Soal'],['gen','Generator'],['lvl','Level']];
+$('#tabs').innerHTML=TABS.map(t=>`<button class="btn" data-t="${t[0]}">${t[1]}</button>`).join('');
+document.querySelectorAll('#tabs .btn').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+function tab(t){const B=$('#body');
+ if(t=='shop'){const list=[];for(let i=0;i<N;i++){const it=item(i);if((fc=='Semua'||it.cat==fc)&&(ft<0||it.t==ft))list.push(it)}
+  const pg=Math.max(0,Math.min(page,Math.ceil(list.length/24)-1));page=pg;
+  B.innerHTML=`<div class="row"><select id="fc">${CATS.map(c=>`<option ${c==fc?'selected':''}>${c}</option>`)}</select><select id="ft"><option value="-1">Semua tingkat</option>${TIER.map((n,i)=>`<option value="${i}" ${i==ft?'selected':''}>${n}</option>`)}</select><button class="btn" id="pv">&lt;</button> ${pg+1}/${Math.ceil(list.length/24)} (${list.length} furnitur) <button class="btn" id="nt">&gt;</button></div>`+
+  list.slice(pg*24,pg*24+24).map(it=>`<div class="card"><b>${it.name}</b><span style="color:#ffe066">${it.price} koin | +${it.pts} poin</span><span class="sw" style="background:#${COL[it.c][1].toString(16).padStart(6,'0')};width:16px;height:16px"></span><button class="btn g" data-b="${it.i}">Beli</button></div>`).join('');
+  $('#fc').onchange=e=>{fc=e.target.value;page=0;tab('shop')};$('#ft').onchange=e=>{ft=+e.target.value;page=0;tab('shop')};$('#pv').onclick=()=>{page--;tab('shop')};$('#nt').onclick=()=>{page++;tab('shop')};
+  B.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const it=item(+b.dataset.b);if(S.coins<it.price){say('Koinmu belum cukup. Buka tab Soal untuk cari koin!');return}if(pend)sc.remove(pend.o);view(true);const o=mk(it.b,it.c,it.t,it.s);o.position.set(0,0,0);sc.add(o);pend={it,o};hint('Klik lantai untuk menaruh <b>'+it.name+'</b> <button class="btn r" id="cn">Batal</button>');$('#cn').onclick=()=>{sc.remove(pend.o);pend=null;hint('')}})}
+ if(t=='sel'&&sel){B.innerHTML=`<div class="row"><button class="btn" id="rot">Putar</button><button class="btn r" id="del">Jual (50%)</button></div>`;$('#rot').onclick=()=>{sel.r+=Math.PI/2;sel.o.rotation.y=sel.r;save()};$('#del').onclick=()=>{S.coins+=Math.floor(item(sel.i).price/2);sc.remove(sel.o);S.items=S.items.filter(a=>a!==sel);sel=null;hint('');upd();save();tab('shop')}}
+ if(t=='dec'){const sw=(a,f)=>a.map(c=>`<span class="sw" data-c="${c}" style="background:#${c.toString(16).padStart(6,'0')}"></span>`).join('');
+  B.innerHTML=`<div class="row"><b>Dinding</b>${sw([0xf2e6c9,0xffffff,0xbfe3ff,0xffd1dc,0xc8f0c8,0xe6d3ff,0xffc680,0x9fb4c8,0x3a4a6a,0xd9453b],0)}</div><div class="row"><b>Lantai</b>${['Kayu','Keramik','Karpet Merah','Batu'].map((n,i)=>`<button class="btn" data-f="${i}">${n}</button>`).join('')}</div><div class="row"><b>Gorden jendela</b>${[0x66aaff,0xff6688,0x66cc77,0xffcc44,0xaa77ee].map(c=>`<span class="sw" data-w="${c}" style="background:#${c.toString(16).padStart(6,'0')}"></span>`).join('')}<b>Bingkai</b>${[0xffffff,0x5a3a1c,0x222222].map(c=>`<span class="sw" data-fr="${c}" style="background:#${c.toString(16).padStart(6,'0')}"></span>`).join('')}</div><div class="row"><b>Atap</b>${[0xb5471b,0x3b6fd9,0x2f8f3f,0x555555,0x8a4fd0].map(c=>`<span class="sw" data-r="${c}" style="background:#${c.toString(16).padStart(6,'0')}"></span>`).join('')}</div>`;
+  B.querySelectorAll('[data-c]').forEach(e=>e.onclick=()=>{S.wall=+e.dataset.c;wallMat.color.setHex(S.wall);save()});
+  B.querySelectorAll('[data-f]').forEach(e=>e.onclick=()=>{S.floor=+e.dataset.f;floorM.material.map=tex(S.floor);floorM.material.needsUpdate=true;save()});
+  B.querySelectorAll('[data-w]').forEach(e=>e.onclick=()=>curtM.color.setHex(+e.dataset.w));
+  B.querySelectorAll('[data-fr]').forEach(e=>e.onclick=()=>frM.color.setHex(+e.dataset.fr));
+  B.querySelectorAll('[data-r]').forEach(e=>e.onclick=()=>{S.roof=+e.dataset.r;roofMat.color.setHex(S.roof);save()})}
+ if(t=='quiz')B.innerHTML=`<div class="row"><b>Pilih mata pelajaran:</b>${['MTK','PAI','IPS','ENG'].map(s=>`<button class="btn g" data-q="${s}">${s=='ENG'?'B. Inggris':s=='MTK'?'Matematika':s}</button>`).join('')}</div>`,B.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>quiz(b.dataset.q));
+ if(t=='gen')B.innerHTML=GEN.map((g,i)=>`<div class="card"><b>${g[0]}</b><span>${g[1]} koin</span>${i==S.gen?'<b style="color:#5fd35f">Aktif</b>':i<S.gen?'<span>Dimiliki</span>':`<button class="btn g" data-g="${i}">Beli</button>`}</div>`).join(''),B.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{const i=+b.dataset.g;if(i!=S.gen+1){say('Beli generator berurutan ya, mulai dari yang paling murah.');return}if(S.coins<GEN[i][1]){say('Koin belum cukup.');return}S.coins-=GEN[i][1];S.gen=i;upd();save();tab('gen')});
+ if(t=='lvl'){const{L,p}=prog();B.innerHTML=`<div style="width:100%"><b>Level ${S.level}: ${L[0]}</b><br>Target: ${L[1]} furnitur (kamu ${S.items.length}) dan skor dekor ${L[2]} (kamu ${score()}). Hadiah naik level: ${L[3]} koin.<br>Beli furnitur bertingkat lebih tinggi untuk skor lebih besar!<br><br>${p>=1?(S.level>=10?'<b>Selamat! Semua level selesai!</b>':'<button class="btn g" id="up">Lanjut ke level berikutnya</button>'):'Progres: '+Math.floor(p*100)+'%'}</div>`;
+  const u=$('#up');if(u)u.onclick=()=>{S.coins+=LV[S.level][3];S.level++;upd();save();tab('lvl');say('Level naik! Sekarang soal dan target lebih sulit.')}}}
+function upd(){$('#who').textContent=S.name;$('#coin').textContent='Koin: '+S.coins+' (x'+mult()+')';$('#lv').textContent='Lv '+S.level;$('#prog i').style.width=Math.floor(prog().p*100)+'%'}
+let sq=[],si=0;function say(t,q){$('#say').style.display='block';$('#sayt').innerHTML='Robot: '+t;sq=q||[];si=0;$('#sayb').style.display=q?'inline-block':'none'}
+$('#sayb').onclick=()=>{if(si<sq.length){$('#sayt').innerHTML='Robot: '+sq[si++]}else $('#say').style.display='none'};
+/* flow */
+$('#hi').textContent='Halo, '+S.name+'!';
+$('#chg').onclick=()=>{$('#nm').style.display='block';$('#ni').value=S.name};
+$('#ok').onclick=()=>{S.name=$('#ni').value.trim()||'Pemain';$('#nm').style.display='none';$('#hi').textContent='Halo, '+S.name+'!';save()};
+const TIPS=['Kerjakan soal untuk dapat koin.','Beli generator supaya hadiah soal berlipat.','Furnitur tingkat Sultan memberi skor dekor terbesar.','Seret layar untuk memutar kamera, scroll untuk zoom.','Klik furnitur di rumah untuk memutar atau menjualnya.','Ganti warna dinding dan lantai gratis di tab Dekor.'];
+$('#play').onclick=()=>{$('#title').style.display='none';$('#load').style.display='flex';$('#tip').textContent='Tips: '+TIPS[Math.random()*TIPS.length|0];let p=0;const iv=setInterval(()=>{p+=4;$('#bar i').style.width=p+'%';if(p%32==0)$('#tip').textContent='Tips: '+TIPS[Math.random()*TIPS.length|0];if(p>=100){clearInterval(iv);start()}},120)};
+function start(){$('#load').style.display='none';$('#hud').style.display='flex';$('#panel').style.display='flex';wallMat.color.setHex(S.wall);roofMat.color.setHex(S.roof);upd();tab('quiz');
+ say(`Halo ${S.name}! Aku robot pemandu. Ini rumahmu yang masih kosong.`,['Cari koin dulu di tab Soal (Matematika, PAI, IPS, B. Inggris).','Lalu belanja furnitur di tab Toko. Klik Beli, lalu klik lantai rumah untuk menaruhnya.','Ganti warna dinding, lantai, dan jendela di tab Dekor. Selesaikan target tiap level di tab Level. Selamat bermain!'])}
+$('#vOut').onclick=()=>view(false);$('#vIn').onclick=()=>view(true);
+let tm=0;(function loop(){requestAnimationFrame(loop);tm+=.03;robot.position.y=Math.sin(tm)*.08;
+ th+=(tth-th)*.08;ph+=(tph-ph)*.08;rd+=(trd-rd)*.08;
+ cam.position.set(Math.sin(th)*Math.cos(ph)*rd,1.2+Math.sin(ph)*rd,Math.cos(th)*Math.cos(ph)*rd);cam.lookAt(0,1,0);R.render(sc,cam)})();
+</script></body></html>
